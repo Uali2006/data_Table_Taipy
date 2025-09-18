@@ -1,0 +1,4 @@
+taipy
+pandas
+sqlite3-binary
+json
