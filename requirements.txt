@@ -1,4 +1,4 @@
 taipy
 pandas
-sqlite3-binary
+sqlite3
 json
