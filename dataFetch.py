@@ -127,6 +127,7 @@ def load_row(row_id):
     if not row:
         return pd.DataFrame()
     return pd.DataFrame([{
+        "ID": row["id"],
         "Name": row["name"],
         "Form": row["form_selected"],
         "Dosage": row["dosage"],
@@ -170,26 +171,106 @@ def on_edit(state, var_name, payload):
     cur.execute(f"UPDATE data SET {db_col} = ? WHERE id = ?", (val, curr_row_id))
     con.commit()
     con.close()
+item_count = f"{curr_row_id}/{total_rows}"
+def update_id(state):
+    global curr_row_id, total_rows
+    state.item_count = f"{curr_row_id}/{total_rows}"
+
 
 def prev_row(state):
-    global curr_row_id
+    global curr_row_id, item_count, total_rows
     if curr_row_id > 1:
         curr_row_id -= 1
         state.df = load_row(curr_row_id)
+        update_id(state)
 
 def next_row(state):
-    global curr_row_id
+    global curr_row_id, item_count, total_rows
     if curr_row_id < total_rows:
         curr_row_id += 1
         state.df = load_row(curr_row_id)
+        update_id(state)
 
+def add_row(state, var_name, payload):
+    global curr_row_id, total_rows
+
+    forms = ["solution", "tablet", "syrup"]
+    units = ["mL", "mG", "L"]
+    frequencies = ["1r/day", "2r/day", "3r/day"]
+    routes = ["intraven", "oral"]
+
+    new_row_data = {
+        "name": "New Drug",
+        "form": json.dumps(forms),
+        "dosage": "",
+        "unit": json.dumps(units),
+        "concentration": "",
+        "frequency": json.dumps(frequencies),
+        "duration": "",
+        "route": json.dumps(routes),
+        "form_selected": forms[0],
+        "unit_selected": units[0],
+        "frequency_selected": frequencies[0],
+        "route_selected": routes[0],
+    }
+
+    con = sqlite3.connect(DB_NAME)
+    cur = con.cursor()
+    cur.execute("""
+        INSERT INTO data 
+        (name, form, dosage, unit, concentration, frequency, duration, route, 
+        form_selected, unit_selected, frequency_selected, route_selected)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        new_row_data["name"], new_row_data["form"], new_row_data["dosage"], new_row_data["unit"],
+        new_row_data["concentration"], new_row_data["frequency"], new_row_data["duration"], new_row_data["route"],
+        new_row_data["form_selected"], new_row_data["unit_selected"], new_row_data["frequency_selected"], new_row_data["route_selected"]
+    ))
+    con.commit()
+
+    new_id = cur.lastrowid
+    con.close()
+    total_rows += 1
+    curr_row_id = new_id
+    state.df = load_row(curr_row_id)
+    update_id()
+
+def del_row(state, var_name, payload):
+    global curr_row_id, total_rows
+
+    row_idx = payload["index"]
+    row_id = int(state.df.loc[row_idx, "ID"])
+    con = sqlite3.connect(DB_NAME)
+    cur = con.cursor()
+
+    cur.execute("DELETE FROM data WHERE id=?", (row_id,))
+    con.commit()
+    con.close()
+    total_rows-=1
+
+    if(curr_row_id>1): curr_row_id-=1
+    else: curr_row_id=1
+
+    if (total_rows>0):
+        state.df = load_row(curr_row_id)
+    else:
+        state.df = pd.DataFrame()
+
+
+user_text = "Sentiments two occasional affronting solicitude travelling and one contrasted. Fortune day out married parties. Happiness remainder joy but earnestly for off. Took sold add play may none him few. If as increasing contrasted entreaties be. Now summer who day looked our behind moment coming. Pain son rose more park way that. An stairs as be lovers uneasy."
+
+
+Color=["Red", "Green", "Blue"]
+color = Color[0]
 page = """
+
 ## Drugs Table — Plain Text Fields Only
+<|{user_text}|input|multiline|rows=6|label=Raw drugs text|width=100%|>
 
-<|{df}|table|lov[Form]={forms_lov}|lov[Unit]={units_lov}|lov[Frequency]={freq_lov}|lov[Route]={routes_lov}|editable|on_edit=on_edit|width=100%|no on_add|no on_delete|show_all|>
+<|{df}|table|lov[Form]={forms_lov}|lov[Unit]={units_lov}|lov[Frequency]={freq_lov}|lov[Route]={routes_lov}|editable|on_edit=on_edit|on_add=add_row|on_delete=del_row|show_all|width=100%|columns=Name;Form;Dosage;Unit;Concentration;Frequency;Duration;Route;|size=small|>
 
-<|Previous|button|on_action=prev_row|>  
-<|Next|button|on_action=next_row|>
+<|Previous|button|on_action=prev_row|> <|{item_count}|text|> <|Next|button|on_action=next_row|>
+
 """
 
-Gui(page=page).run(run_browser=False, port=port, host="0.0.0.0")
+Gui(page=page).run(run_browser=False, port=port, host="0.0.0.0", use_reloader=True)
