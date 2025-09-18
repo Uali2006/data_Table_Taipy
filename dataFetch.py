@@ -2,6 +2,9 @@ import sqlite3
 import pandas as pd
 from taipy.gui import Gui
 import json
+import os
+port = int(os.environ.get("PORT", 5000))
+
 
 DB_NAME = "data.db"
 
@@ -189,4 +192,4 @@ page = """
 <|Next|button|on_action=next_row|>
 """
 
-Gui(page=page).run()
+Gui(page=page).run(run_browser=False, port=port, host="0.0.0.0")
