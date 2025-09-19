@@ -5,7 +5,6 @@ import json
 import os
 port = int(os.environ.get("PORT", 5000))
 
-
 DB_NAME = "data.db"
 
 def init_db():
@@ -233,7 +232,7 @@ def add_row(state, var_name, payload):
     total_rows += 1
     curr_row_id = new_id
     state.df = load_row(curr_row_id)
-    update_id()
+    update_id(state)
 
 def del_row(state, var_name, payload):
     global curr_row_id, total_rows
@@ -255,22 +254,29 @@ def del_row(state, var_name, payload):
         state.df = load_row(curr_row_id)
     else:
         state.df = pd.DataFrame()
+    update_id(state)
 
 
 user_text = "Sentiments two occasional affronting solicitude travelling and one contrasted. Fortune day out married parties. Happiness remainder joy but earnestly for off. Took sold add play may none him few. If as increasing contrasted entreaties be. Now summer who day looked our behind moment coming. Pain son rose more park way that. An stairs as be lovers uneasy."
 
 
-Color=["Red", "Green", "Blue"]
-color = Color[0]
-page = """
+def setClassCol(state, value, index, row, column_name):
+    return "colWidth"
+
+page ="""
+
+<style>
+    .colWidth{
+        width:max-content;
+    }
+</style>
 
 ## Drugs Table — Plain Text Fields Only
 <|{user_text}|input|multiline|rows=6|label=Raw drugs text|width=100%|>
 
-<|{df}|table|lov[Form]={forms_lov}|lov[Unit]={units_lov}|lov[Frequency]={freq_lov}|lov[Route]={routes_lov}|editable|on_edit=on_edit|on_add=add_row|on_delete=del_row|show_all|width=100%|columns=Name;Form;Dosage;Unit;Concentration;Frequency;Duration;Route;|size=small|>
+<|{df}|table|lov[Form]={forms_lov}|lov[Unit]={units_lov}|lov[Frequency]={freq_lov}|lov[Route]={routes_lov}|editable|on_edit=on_edit|on_add=add_row|on_delete=del_row|show_all|width=100%|columns=Name;Form;Dosage;Unit;Concentration;Frequency;Duration;Route;|class_name=table|cell_class_name[Form]=setClassCol|size=medium|>
 
 <|Previous|button|on_action=prev_row|> <|{item_count}|text|> <|Next|button|on_action=next_row|>
-
 """
 
 Gui(page=page).run(run_browser=False, port=port, host="0.0.0.0", use_reloader=True)
